@@ -1,0 +1,1 @@
+doParallel::registerDoParallel()
