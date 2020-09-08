@@ -8,7 +8,7 @@
 ##' @return
 ##' @author Eivind Gard Lund
 ##' @export
-xgb_tune_simple <- function(xgb_simple_wf, train) {
+xgb_tune_simple <- function(xgb_simple_wf, train, grid_size=300, num_repeats=1) {
 
   xgb_grid = grid_latin_hypercube(
     tree_depth(),
@@ -17,11 +17,11 @@ xgb_tune_simple <- function(xgb_simple_wf, train) {
     sample_size = sample_prop(),
     finalize(mtry(), train),
     #learn_rate(),
-    size = 50
+    size = grid_size
   )
   
   set.seed(234)
-  folds = vfold_cv(train, strata = sample_type)
+  folds = vfold_cv(train, strata = sample_type, repeats =num_repeats)
   set.seed(234)
   tune_grid(
     xgb_simple_wf,
