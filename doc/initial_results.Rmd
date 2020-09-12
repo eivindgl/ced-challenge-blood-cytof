@@ -1,0 +1,111 @@
+---
+title: "Challenge cytof - initial analysis"
+author: "Eivind G. Lund"
+date: "`r format(Sys.time(), '%d %B, %Y')`"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = FALSE)
+```
+
+## Konklusjon
+
+Modelltrening og evaluering på anrikede data oppnår veldig gode resultater
+nesten uavhengig av modelleringsvalg. 
+Dessverre er resultatene for pre-anrikede prøver skuffende.
+Jeg er usikker på hvorfor dette ikke fungerer bedre.
+
+Det er mulig jeg undervurderer hvor sjelden denne fenotypen er i ikke anrikede prøver.
+Det er skummelt hvor fort man glemmer...
+Når det er sagt er det jo kun ~80-90% av cellene i anrikede prøver med fenotypen som
+faktisk er tetramer-+.
+
+Jeg skal prøve igjen med litt tyngre maskineri og se om det går bedre med
+de pre-anrikede prøvene da. Jeg har mine tvil. Vi får ta en prat med anledning,
+men det er ikke sikkert jeg får noe matnyttig her i løpet av uken.
+
+## Oversikt
+
+Etter litt eksperimentering fant jeg ut at både en kompleks modell som xgboost, 
+så vel som en enkel logistisk regressjonsmodell oppnår utmerkede resultater
+på de anrikede prøvene.
+Dette kommer av at en rekke markører tydelig skiller tetramer+ fra tetramer- celler.
+Se bildet under.
+
+Derfor bestemte jeg meg for å bruke en variant av logistike modeller med regularisering kalt 
+["elastic net regularization"](https://en.wikipedia.org/wiki/Elastic_net_regularization).
+En fordel med regularisering over vanlig logistisk regresjon er at svakere prediktorer får liten 
+effekt i modellen. Dermed kan effektstyrken brukes til å redusere antallet prediktorer om ønskelig, hvilket det er for oss.
+
+```{r, echo=FALSE}
+p1 <- readd(eqdf) %>%
+  ggplot(aes(NKG2D, CXCR3)) +
+  geom_point(aes(color = sample_type), alpha = 0.4, size=2) + theme(legend.position="bottom")
+
+p2 <- readd(eqdf) %>%
+  ggplot(aes(CD28, CD132)) +
+  geom_point(aes(color = sample_type), alpha = 0.4, size=2) + theme(legend.position="bottom")
+p1 + p2 + plot_annotation(title='Scatterplot for et balansert utvalg av tet+/- fra alle donorer')
+```
+
+## Databruk
+
+Som kjent er det varisjon i antall prøver per sample.
+```{r, echo=FALSE}
+readd(day6_tbl) %>% 
+  count(donor,sample_type) %>% 
+  arrange(donor,sample_type) %>% 
+  pivot_wider(names_from = donor, values_from=n) %>% 
+  kbl() %>% kable_styling(full_width = F)
+
+```
+For å gjøre modellen mer generell valgte jeg et tilfeldig utvalg per prøve med opp til 260 observasjoner.
+```{r, echo=FALSE}
+readd(eqdf) %>% 
+  count(donor,sample_type) %>% 
+  arrange(donor,sample_type) %>% 
+  pivot_wider(names_from = donor, values_from=n) %>% 
+  kbl() %>% kable_styling(full_width = F)
+
+```
+Deretter delte jeg det balanserte utvalget i et treningssett(80%) og et evalueringssett(20%).
+
+Vi har tre paneler. Old, new, og mixed. 
+For hvert panel trente jeg en modell med all markører. 
+For å finne de beste parameterene for regulariseringen benyttet jeg kryss-validering.
+Detaljene her er ikke viktig, men modellene hadde jevnt over en veldig god score.
+
+Deretter tok jeg de 4 viktigste markørene og gjorde en ny modelltrening med samme metodikk.
+Til slutt evaluerte jeg alle 6 modellene mot test settet.
+```{r, echo=F}
+readd(test_res) %>% 
+  extract_test_metrics(c('sens', 'spec', 'precision', 'recall')) %>% 
+  adorn_pct_formatting() %>% 
+  rename(sensitivity=sens, specificity=spec) %>% 
+  kbl() %>% kable_styling(full_width = F)
+```
+
+## Effektstørrelser for modeller
+```{r, echo=F}
+readd(submodel) %>% 
+  select(panel, model_coeffs, sub4_model_coeffs) %>% 
+  pivot_longer(-panel) %>% 
+  unnest(value) %>% 
+  mutate(model_type = if_else(str_detect(name, 'sub4'), 'sub-4', 'full'),
+         name = str_c(panel, model_type, sep = '-')) %>% 
+  select(-penalty, -panel, -model_type) %>%
+  pivot_wider(values_from = estimate, values_fill = 0) %>% 
+  adorn_rounding() %>% 
+  kbl() %>% kable_styling(full_width = F)
+
+```
+
+
+## Prediksjon på preanrikede prøver
+Dessverre er det lite som slår ut på dag 6 sammenligned med dag 0.
+
+```{r, echo=F}
+readd(prop_per_sample_model_plot)
+```
+
