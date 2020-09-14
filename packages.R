@@ -24,3 +24,5 @@ conflict_prefer("parameters", "dials")
 conflict_prefer("step_downsample", "themis")
 conflict_prefer("expand", "tidyr")
 library(rmarkdown)
+
+library(embed)

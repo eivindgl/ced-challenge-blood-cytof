@@ -9,5 +9,6 @@ lapply(list.files("./R", full.names = TRUE), source)
 ## lock_envir allows functions that alter the random seed to be used. The biggest
 ## culprits of this seem to be interactive graphics e.g. plotly and mapdeck.
 drake_config(bind_plans(the_plan,
-                        em_plan),
+                        em_plan,
+                        plan_elastic_eval),
              lock_envir = FALSE)

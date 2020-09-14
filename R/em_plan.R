@@ -24,26 +24,102 @@ em_plan <-
                                 as_tibble(.name_repair = 'unique') %>% 
                                 bind_rows(filter(day6_tbl, sample_type == 'tetneg')),
                               format='fst_tbl'),
-    # eqdf = target(
-    #   day6_tbl %>% 
-    #     group_by(donor, sample_type) %>% 
-    #     slice_sample(n=260) %>% 
-    #     ungroup(), 
-    #   format='fst_tbl'),
-    # test_out_of_sample = day6_tbl %>% 
-    #   anti_join(eqdf, by = 'row_id'),
-    # 
-    # d6split = initial_split(eqdf, strata = intersect(eqdf$donor, eqdf$sample_type)),
-    # train = training(d6split),
-    # test = testing(d6split),
-    # 
-    # ## For prediction
-    # pre_enriched_meta = read_pre_enriched_meta(),
-    # pre_raw = read_pre_enriched_fcs(pre_enriched_meta, filter(markers, panel == 'mixpanel')),
-    # pre_tbl = target(pre_raw %>%
-    #                    select(donor, sample_time, fcs) %>%
-    #                    unnest(cols=fcs) %>%
-    #                    mutate(row_id = 1:n()) %>% 
-    #                    as_tibble(),
-    #                  format='fst_tbl'),
+    em_eqdf = target(
+      day6_tetp_em_tbl %>%
+        group_by(donor, sample_type) %>%
+        slice_sample(n=800) %>%
+        ungroup(),
+      format='fst_tbl'),
+    em_test_out_of_sample = day6_tetp_em_tbl %>%
+      anti_join(eqdf, by = 'row_id'),
+
+    em_d6split = initial_split(em_eqdf, strata = intersect(em_eqdf$donor, em_eqdf$sample_type)),
+    em_train = training(em_d6split),
+    em_test = testing(em_d6split),
+
+    
+    em_glm_final = wf_glm %>% 
+      fit(em_train),
+    
+    em_glm_pred = bind_cols(
+      select(em_test, donor, sample_type, row_id),
+      em_glm_final %>% 
+        predict(em_test),
+      em_glm_final %>% 
+        predict(em_test, type='prob')
+    ),
+    
+    em_glm_auc = em_glm_pred %>% roc_auc(sample_type, .pred_tetpos),
+    em_glm_cm = em_glm_pred %>% conf_mat(sample_type, .pred_class),
+    em_glm_metrics = summary(em_glm_cm), 
+    
+    em_glm_PE_pred = bind_cols(
+      select(pre_tbl, donor, sample_time, row_id),
+      em_glm_final %>% 
+        predict(pre_tbl),
+      em_glm_final %>% 
+        predict(pre_tbl, type='prob')
+    ), 
+    
+    wf_xgb = workflow() %>%
+      add_recipe(rec %>% 
+                   update_role(CD123_LAG3, NKG2D, CD52, CD47, new_role='id')) %>% 
+      add_model(boost_tree(trees = 1000, 
+                           tree_depth = tune(), min_n = tune(), 
+                           loss_reduction = tune(),                     ## first three: model complexity
+                           sample_size = tune(), mtry = tune(),         ## randomness
+                           learn_rate = 0.05,     ) %>% 
+                  set_mode('classification') %>% 
+                  set_engine('xgboost')),
+    xgb_grid = grid_latin_hypercube(
+      tree_depth(),
+      min_n(),
+      loss_reduction(),
+      sample_size = sample_prop(),
+      finalize(mtry(), em_train),
+      #learn_rate(),
+      size = 300
+    ),
+    cv_folds = folds <- vfold_cv(em_train, strata = sample_type, v = 5, repeats = 3),
+    
+    em_res = tune_grid(
+      wf_xgb,
+      resamples = cv_folds,
+      grid = xgb_grid,
+      metrics = metric_set(mn_log_loss, roc_auc, precision, accuracy, pr_auc, gain_capture, mcc, f_meas, kap),
+      control = control_grid(save_pred = TRUE, verbose = TRUE)
+    ),
+    em_final = finalize_workflow(
+      wf_xgb,
+      select_best(em_res, metric='mn_log_loss')
+    ) %>% 
+      fit(em_train),
+    
+    em_xgb_pred = bind_cols(
+      select(em_test, donor, sample_type, row_id),
+      em_final %>% 
+        predict(em_test),
+      em_final %>% 
+        predict(em_test, type='prob')
+    ),
+    
+    em_xgb_auc = em_xgb_pred %>% roc_auc(sample_type, .pred_tetpos),
+    em_xgb_cm = em_xgb_pred %>% conf_mat(sample_type, .pred_class),
+    em_xgb_metrics = summary(em_glm_cm), 
+    
+    em_xgb_PE_pred = bind_cols(
+      select(pre_tbl, donor, sample_time, row_id),
+      em_final %>% 
+        predict(pre_tbl),
+      em_final %>% 
+        predict(pre_tbl, type='prob')
+    ), 
+    
+    em_xgb_PE_plot = em_xgb_PE_pred %>% 
+      group_by(donor, sample_time) %>% 
+      summarize(tetp_prop = mean(.pred_class == 'tetpos'), .groups='drop') %>% 
+      ggplot(aes(donor, tetp_prop, fill=sample_time)) +
+      geom_col(position = 'dodge2') +
+      scale_y_continuous(labels = scales::percent_format()) +
+      labs(y = 'Estimated Prevalence of tetramer+ phenotype')
   )
