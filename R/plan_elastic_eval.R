@@ -107,24 +107,24 @@ plan_elastic_eval <-
     lasso_res_oldpanel = target(iter_fit_best_lasso(em_eqdf, markers, panel_name='oldpanel', GRID_SIZE=GRID_SIZE, v = v, r =r), format='qs'),
     lasso_res_newpanel = target(iter_fit_best_lasso(em_eqdf, markers, panel_name='newpanel', GRID_SIZE=GRID_SIZE, v = v, r =r), format='qs'),
     
-    elastic_res_mixpanel = target(iter_fit_best_enet(em_eqdf, markers, panel_name='mixpanel', GRID_SIZE=GRID_SIZE, v = v, r =r), format='qs'),
-    elastic_res_oldpanel = target(iter_fit_best_enet(em_eqdf, markers, panel_name='oldpanel', GRID_SIZE=GRID_SIZE, v = v, r =r), format='qs'),
-    elastic_res_newpanel = target(iter_fit_best_enet(em_eqdf, markers, panel_name='newpanel', GRID_SIZE=GRID_SIZE, v = v, r =r), format='qs'),
-
-    elastic_scores = bind_rows(new = elastic_res_newpanel %>%
-                                 map_dfr(collect_best_metrics),
-                               old = elastic_res_oldpanel %>%
-                                 map_dfr(collect_best_metrics),
-                               mixed = elastic_res_mixpanel %>%
-                                 map_dfr(collect_best_metrics),
-                               .id = 'panel') %>%
-      mutate(n = as.numeric(str_extract(model_name, '\\d+$')),
-        model_name = fct_reorder(model_name, n, min)),
-    elastic_auc_plot = elastic_scores %>%
-      ggplot(aes(n, pr_auc, color = panel)) +
-      geom_line() + scale_y_continuous(limits = c(0.5,1)) +
-      labs(title='Model performance by number of features and panel',
-           y = 'Area under the precision recall curve',
-           x = 'Number of features')
+    # elastic_res_mixpanel = target(iter_fit_best_enet(em_eqdf, markers, panel_name='mixpanel', GRID_SIZE=GRID_SIZE, v = v, r =r), format='qs'),
+    # elastic_res_oldpanel = target(iter_fit_best_enet(em_eqdf, markers, panel_name='oldpanel', GRID_SIZE=GRID_SIZE, v = v, r =r), format='qs'),
+    # elastic_res_newpanel = target(iter_fit_best_enet(em_eqdf, markers, panel_name='newpanel', GRID_SIZE=GRID_SIZE, v = v, r =r), format='qs'),
+    # 
+    # elastic_scores = bind_rows(new = elastic_res_newpanel %>%
+    #                              map_dfr(collect_best_metrics),
+    #                            old = elastic_res_oldpanel %>%
+    #                              map_dfr(collect_best_metrics),
+    #                            mixed = elastic_res_mixpanel %>%
+    #                              map_dfr(collect_best_metrics),
+    #                            .id = 'panel') %>%
+    #   mutate(n = as.numeric(str_extract(model_name, '\\d+$')),
+    #     model_name = fct_reorder(model_name, n, min)),
+    # elastic_auc_plot = elastic_scores %>%
+    #   ggplot(aes(n, pr_auc, color = panel)) +
+    #   geom_line() + scale_y_continuous(limits = c(0.5,1)) +
+    #   labs(title='Model performance by number of features and panel',
+    #        y = 'Area under the precision recall curve',
+    #        x = 'Number of features')
 )
 # 

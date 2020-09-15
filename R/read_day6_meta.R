@@ -15,6 +15,6 @@ read_day6_meta <- function() {
     mutate(donor = str_extract(filename, '^\\d+'),
            donor = str_c('CD', donor),
            sample_type = str_extract(orig_meta, 'tet\\w+$'),
-           sample_type = fct_relevel(sample_type, 'tetpos'),
+           sample_type = fct_relevel(sample_type, 'tetneg'),
            sample_time = 'day_6')
 }
