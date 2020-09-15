@@ -50,8 +50,7 @@ iter_fit_best_enet <- function(em_eqdf, markers, panel_name='mixpanel', GRID_SIZ
   skip_features <- setdiff(colnames(em_eqdf), panel_features) 
   cv_splits <- vfold_cv(em_eqdf, v = v, repeats = r)
   elnet_res <- list()
-  
-  for (i in (ncol(em_eqdf) - length(skip_features)):3) {
+  for (i in length(panel_features):3) {
     model_name <- str_glue('model_fsize_{i}')
     print(str_glue('Fitting {model_name} ...'))
     x <- fit_elastic_net(em_eqdf, cv_splits, grid_size = GRID_SIZE, skip_features = skip_features) %>% 
@@ -62,18 +61,70 @@ iter_fit_best_enet <- function(em_eqdf, markers, panel_name='mixpanel', GRID_SIZ
   return(elnet_res)
 }
 
+iter_fit_best_lasso <- function(em_eqdf, markers, panel_name='mixpanel', GRID_SIZE=40, v = 5, r =3) {
+  panel_features <- c(filter(markers, panel == panel_name) %>% pull(protein), 'sample_type')
+  skip_features <- setdiff(colnames(em_eqdf), panel_features) 
+  cv_splits <- vfold_cv(em_eqdf, v = v, repeats = r)
+  
+  # x <- fit_elastic_net(em_eqdf, cv_splits, grid_size = GRID_SIZE, skip_features = skip_features) 
+  
+  spec <- logistic_reg(penalty = tune(), mixture = 1) %>% 
+    set_engine('glmnet')
+  
+  # Hyperparameter grid
+  logit_grid <- tibble(penalty = 0:GRID_SIZE/(GRID_SIZE+1))
+  
+  rec <- em_eqdf %>% 
+    recipe(sample_type ~ .) %>% 
+    update_role(all_of(skip_features), new_role = 'ID')
+  
+  rval <- list()
+  rval$wflow <- logit_wflow <- workflow() %>%
+    add_recipe(rec) %>%
+    add_model(spec)
+  
+  rval$tuned_model <- tune_grid(rval$wflow,
+                                resamples = cv_splits,
+                                grid = logit_grid,
+                                metrics = metric_set(mn_log_loss, pr_auc, gain_capture, roc_auc, sensitivity, specificity),
+                                control = control_resamples(save_workflow = T, save_pred = T)
+  )
+  rval$best <- rval$tuned_model %>% 
+    select_best(metric='mn_log_loss')
+  rval$final <-  finalize_workflow(rval$wflow, rval$best) %>% 
+    fit(em_eqdf)
+  return(rval)
+}
+
 
 
 plan_elastic_eval <-
   drake_plan(
-    GRID_SIZE=30,
+    GRID_SIZE=40,
     v=8,
     r=1,
-    elastic_res_mixpanel = target(iter_fit_best_enet(em_eqdf, markers, panel_name='mixpanel', GRID_SIZE=GRID_SIZE, v = v, r =1), format='qs'),
-    elastic_res_oldpanel = target(iter_fit_best_enet(em_eqdf, markers, panel_name='oldpanel', GRID_SIZE=GRID_SIZE, v = v, r =1), format='qs'),
-    elastic_res_newpanel = target(iter_fit_best_enet(em_eqdf, markers, panel_name='newpanel', GRID_SIZE=GRID_SIZE, v = v, r =1), format='qs'),
-  )
+    lasso_res_mixpanel = target(iter_fit_best_lasso(em_eqdf, markers, panel_name='mixpanel', GRID_SIZE=GRID_SIZE, v = v, r =r), format='qs'),
+    lasso_res_oldpanel = target(iter_fit_best_lasso(em_eqdf, markers, panel_name='oldpanel', GRID_SIZE=GRID_SIZE, v = v, r =r), format='qs'),
+    lasso_res_newpanel = target(iter_fit_best_lasso(em_eqdf, markers, panel_name='newpanel', GRID_SIZE=GRID_SIZE, v = v, r =r), format='qs'),
+    
+    elastic_res_mixpanel = target(iter_fit_best_enet(em_eqdf, markers, panel_name='mixpanel', GRID_SIZE=GRID_SIZE, v = v, r =r), format='qs'),
+    elastic_res_oldpanel = target(iter_fit_best_enet(em_eqdf, markers, panel_name='oldpanel', GRID_SIZE=GRID_SIZE, v = v, r =r), format='qs'),
+    elastic_res_newpanel = target(iter_fit_best_enet(em_eqdf, markers, panel_name='newpanel', GRID_SIZE=GRID_SIZE, v = v, r =r), format='qs'),
 
-# elastic_res_newpanel %>% 
-#   map_dfr(collect_best_features)
-
+    elastic_scores = bind_rows(new = elastic_res_newpanel %>%
+                                 map_dfr(collect_best_metrics),
+                               old = elastic_res_oldpanel %>%
+                                 map_dfr(collect_best_metrics),
+                               mixed = elastic_res_mixpanel %>%
+                                 map_dfr(collect_best_metrics),
+                               .id = 'panel') %>%
+      mutate(n = as.numeric(str_extract(model_name, '\\d+$')),
+        model_name = fct_reorder(model_name, n, min)),
+    elastic_auc_plot = elastic_scores %>%
+      ggplot(aes(n, pr_auc, color = panel)) +
+      geom_line() + scale_y_continuous(limits = c(0.5,1)) +
+      labs(title='Model performance by number of features and panel',
+           y = 'Area under the precision recall curve',
+           x = 'Number of features')
+)
+# 
