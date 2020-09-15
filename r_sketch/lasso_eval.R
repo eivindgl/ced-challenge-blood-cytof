@@ -26,7 +26,7 @@ rval$final %>%
   filter(estimate != 0) %>% 
   arrange(desc(abs(estimate)))
 
-glm(sample_type ~ ., family = binomial(), data = select(em_eqdf, sample_type, starts_with('CD')) %>% mutate(sample_type = sample_type == 'tetpos')) %>% 
+glm(sample_type ~ . -1, family = binomial(), data = select(em_eqdf, sample_type, starts_with('CD')) %>% mutate(sample_type = sample_type == 'tetpos')) %>% 
   tidy()
 
 iter_fit_best_lasso <- function(em_eqdf, markers, panel_name='mixpanel', v = 5, r =3) {
@@ -62,5 +62,32 @@ iter_fit_best_lasso <- function(em_eqdf, markers, panel_name='mixpanel', v = 5, 
     rval$final <-  finalize_workflow(rval$wflow, rval$best) %>% 
       fit(em_eqdf)
     return(rval)
-  }
-  
+}
+
+
+lasso_res_mixpanel$final  %>% 
+  tidy() %>% 
+  arrange(desc(abs(estimate)))
+
+
+lasso_res_newpanel$wflow %>% 
+  update_model(logistic_reg(penalty = 0.1, mixture = 1) %>% 
+                 set_engine('glmnet')) %>% 
+  fit(em_train) %>% 
+  tidy() %>% 
+  filter(estimate != 0)
+
+mt <- lasso_res_mixpanel$wflow %>% 
+  update_model(logistic_reg(penalty = 0.1, mixture = 1) %>% 
+                 set_engine('glmnet')) %>% 
+  fit(em_train)
+
+mt %>% 
+  tidy() %>% 
+  arrange(desc(abs(estimate)))
+# mt %>% 
+lasso_res_mixpanel$final %>% 
+  predict(em_test) %>%
+  bind_cols(select(em_test, sample_type)) %>% 
+  conf_mat(sample_type, .pred_class) %>% 
+  summary()

@@ -61,40 +61,6 @@ iter_fit_best_enet <- function(em_eqdf, markers, panel_name='mixpanel', GRID_SIZ
   return(elnet_res)
 }
 
-iter_fit_best_lasso <- function(em_eqdf, markers, panel_name='mixpanel', GRID_SIZE=40, v = 5, r =3) {
-  panel_features <- c(filter(markers, panel == panel_name) %>% pull(protein), 'sample_type')
-  skip_features <- setdiff(colnames(em_eqdf), panel_features) 
-  cv_splits <- vfold_cv(em_eqdf, v = v, repeats = r)
-  
-  # x <- fit_elastic_net(em_eqdf, cv_splits, grid_size = GRID_SIZE, skip_features = skip_features) 
-  
-  spec <- logistic_reg(penalty = tune(), mixture = 1) %>% 
-    set_engine('glmnet')
-  
-  # Hyperparameter grid
-  logit_grid <- tibble(penalty = 0:GRID_SIZE/(GRID_SIZE+1))
-  
-  rec <- em_eqdf %>% 
-    recipe(sample_type ~ .) %>% 
-    update_role(all_of(skip_features), new_role = 'ID')
-  
-  rval <- list()
-  rval$wflow <- logit_wflow <- workflow() %>%
-    add_recipe(rec) %>%
-    add_model(spec)
-  
-  rval$tuned_model <- tune_grid(rval$wflow,
-                                resamples = cv_splits,
-                                grid = logit_grid,
-                                metrics = metric_set(mn_log_loss, pr_auc, gain_capture, roc_auc, sensitivity, specificity),
-                                control = control_resamples(save_workflow = T, save_pred = T)
-  )
-  rval$best <- rval$tuned_model %>% 
-    select_best(metric='mn_log_loss')
-  rval$final <-  finalize_workflow(rval$wflow, rval$best) %>% 
-    fit(em_eqdf)
-  return(rval)
-}
 
 
 
@@ -103,9 +69,7 @@ plan_elastic_eval <-
     GRID_SIZE=40,
     v=8,
     r=1,
-    lasso_res_mixpanel = target(iter_fit_best_lasso(em_eqdf, markers, panel_name='mixpanel', GRID_SIZE=GRID_SIZE, v = v, r =r), format='qs'),
-    lasso_res_oldpanel = target(iter_fit_best_lasso(em_eqdf, markers, panel_name='oldpanel', GRID_SIZE=GRID_SIZE, v = v, r =r), format='qs'),
-    lasso_res_newpanel = target(iter_fit_best_lasso(em_eqdf, markers, panel_name='newpanel', GRID_SIZE=GRID_SIZE, v = v, r =r), format='qs'),
+    
     
     # elastic_res_mixpanel = target(iter_fit_best_enet(em_eqdf, markers, panel_name='mixpanel', GRID_SIZE=GRID_SIZE, v = v, r =r), format='qs'),
     # elastic_res_oldpanel = target(iter_fit_best_enet(em_eqdf, markers, panel_name='oldpanel', GRID_SIZE=GRID_SIZE, v = v, r =r), format='qs'),

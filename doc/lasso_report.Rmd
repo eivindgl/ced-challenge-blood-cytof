@@ -1,0 +1,74 @@
+---
+title: "Day 6 challange tet+/- coefficients from full/reduced Lasso model"
+author: "Eivind G. Lund"
+date: "`r format(Sys.time(), '%d %B, %Y')`"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = FALSE)
+```
+
+## Rationale
+Lasso regression is a common method for feature selection (doi: [10.1201/b17320](https://doi.org/10.1201/b17320)).
+A weakness is that for highly correlated features, only one will be selected.
+Similar methods such as elastic nets contain all correlated features with predictive power.
+I chose the lasso method since we aim for a reduced set of features.
+
+### Note
+Markers from the old panel dominate the mixed panel. Their scores are identical when applying penalization since the same 
+markers from the old panel are used in both cases.
+
+## Analysis
+
+```{r, echo=FALSE}
+readd(lasso_penalty_performance_plot)
+```
+
+## Reduced model coefficients
+
+### Mixed panel
+```{r, echo=FALSE}
+readd(lasso_coeffs)$mix$optimal %>% 
+  kbl() %>% 
+  kable_styling(full_width = FALSE)
+```
+
+### New panel
+```{r, echo=FALSE}
+readd(lasso_coeffs)$new$optimal %>% 
+  kbl() %>% 
+  kable_styling(full_width = FALSE)
+```
+
+### Old panel
+```{r, echo=FALSE}
+readd(lasso_coeffs)$old$optimal %>% 
+  kbl() %>% 
+  kable_styling(full_width = FALSE)
+```
+
+## Full model coefficients
+
+### Mixed panel
+```{r, echo=FALSE}
+readd(lasso_coeffs)$mix$full %>% 
+  kbl() %>% 
+  kable_styling(full_width = FALSE)
+```
+
+### New panel
+```{r, echo=FALSE}
+readd(lasso_coeffs)$new$full %>% 
+  kbl() %>% 
+  kable_styling(full_width = FALSE)
+```
+
+### Old panel
+```{r, echo=FALSE}
+readd(lasso_coeffs)$old$full %>% 
+  kbl() %>% 
+  kable_styling(full_width = FALSE)
+```
+
+</details>
