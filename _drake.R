@@ -12,6 +12,7 @@ drake_config(bind_plans(the_plan,
                         em_plan,
                         # plan_elastic_eval,
                         plan_lasso,
-                        plan_iter_select_glm
+                        plan_iter_select_glm,
+                        plan_ucd_and_challenge_best_glm
                         ),
              lock_envir = FALSE)
