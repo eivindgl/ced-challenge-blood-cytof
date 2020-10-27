@@ -22,44 +22,45 @@ em_plan <-
                                 unnest(cols=fcs) %>%
                                 mutate(row_id = 1:n()) %>%
                                 as_tibble(.name_repair = 'unique') %>% 
-                                bind_rows(filter(day6_tbl, sample_type == 'tetneg')),
+                                bind_rows(filter(day6_tbl, sample_type == 'tetneg')) %>% 
+                                clean_names(),
                               format='fst_tbl'),
     em_eqdf = target(
       day6_tetp_em_tbl %>%
         group_by(donor, sample_type) %>%
-        slice_sample(n=800) %>%
+        slice_sample(n=300) %>%
         ungroup(),
       format='fst_tbl'),
-    em_test_out_of_sample = day6_tetp_em_tbl %>%
-      anti_join(eqdf, by = 'row_id'),
+    # em_test_out_of_sample = day6_tetp_em_tbl %>%
+    #   anti_join(eqdf, by = 'row_id'),
 
     em_d6split = initial_split(em_eqdf, strata = intersect(em_eqdf$donor, em_eqdf$sample_type)),
     em_train = training(em_d6split),
     em_test = testing(em_d6split),
 
     
-    em_glm_final = wf_glm %>% 
-      fit(em_train),
-    
-    em_glm_pred = bind_cols(
-      select(em_test, donor, sample_type, row_id),
-      em_glm_final %>% 
-        predict(em_test),
-      em_glm_final %>% 
-        predict(em_test, type='prob')
-    ),
-    
-    em_glm_auc = em_glm_pred %>% roc_auc(sample_type, .pred_tetpos),
-    em_glm_cm = em_glm_pred %>% conf_mat(sample_type, .pred_class),
-    em_glm_metrics = summary(em_glm_cm), 
-    
-    em_glm_PE_pred = bind_cols(
-      select(pre_tbl, donor, sample_time, row_id),
-      em_glm_final %>% 
-        predict(pre_tbl),
-      em_glm_final %>% 
-        predict(pre_tbl, type='prob')
-    )
+    # em_glm_final = wf_glm %>% 
+    #   fit(em_train),
+    # 
+    # em_glm_pred = bind_cols(
+    #   select(em_test, donor, sample_type, row_id),
+    #   em_glm_final %>% 
+    #     predict(em_test),
+    #   em_glm_final %>% 
+    #     predict(em_test, type='prob')
+    # ),
+    # 
+    # em_glm_auc = em_glm_pred %>% roc_auc(sample_type, .pred_tetpos),
+    # em_glm_cm = em_glm_pred %>% conf_mat(sample_type, .pred_class),
+    # em_glm_metrics = summary(em_glm_cm), 
+    # 
+    # em_glm_PE_pred = bind_cols(
+    #   select(pre_tbl, donor, sample_time, row_id),
+    #   em_glm_final %>% 
+    #     predict(pre_tbl),
+    #   em_glm_final %>% 
+    #     predict(pre_tbl, type='prob')
+    # )
   )
 
     

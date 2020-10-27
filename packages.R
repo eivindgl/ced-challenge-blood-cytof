@@ -7,6 +7,7 @@ library(drake)
 library(readxl)
 library(flowCore)
 library(fs)
+library(assertthat)
 ##
 
 library(tidyverse)
@@ -26,3 +27,6 @@ conflict_prefer("expand", "tidyr")
 library(rmarkdown)
 
 library(embed)
+
+library(corrplot)
+conflict_prefer("discard", "purrr")

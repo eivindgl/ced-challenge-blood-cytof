@@ -1,6 +1,8 @@
-iter_fit_best_lasso <- function(em_eqdf, markers, panel_name='mixpanel', GRID_SIZE=40, v = 5, r =3) {
+iter_fit_best_lasso <- function(em_eqdf, markers, panel_name='mixpanel', grid_size=30, v = 10, r =1, opt_skip=character(0)) {
   panel_features <- c(filter(markers, panel == panel_name) %>% pull(protein), 'sample_type')
-  skip_features <- setdiff(colnames(em_eqdf), panel_features) 
+  
+  skip_features <- unique(c(setdiff(colnames(em_eqdf), panel_features),
+                            intersect(opt_skip, colnames(em_eqdf))))
   cv_splits <- vfold_cv(em_eqdf, v = v, repeats = r)
   
   # x <- fit_elastic_net(em_eqdf, cv_splits, grid_size = GRID_SIZE, skip_features = skip_features) 
@@ -9,7 +11,11 @@ iter_fit_best_lasso <- function(em_eqdf, markers, panel_name='mixpanel', GRID_SI
     set_engine('glmnet')
   
   # Hyperparameter grid
-  logit_grid <- tibble(penalty = 0:GRID_SIZE/(2*(GRID_SIZE+1)))
+  logit_grid <- spec %>%
+    parameters() %>%
+    grid_latin_hypercube(size = grid_size)
+  
+  # logit_grid <- tibble(penalty = 0:GRID_SIZE/(2*(GRID_SIZE+1)))
   
   rec <- em_eqdf %>% 
     recipe(sample_type ~ .) %>% 
@@ -46,9 +52,9 @@ get_fit_coeff <- function(wflow, em_eqdf, penalty) {
 
 # the problem with lasso is that the predictor becomes useless --> everything is predicted to be tetneg
 plan_lasso <- drake_plan(
-  lasso_res_mixpanel = target(iter_fit_best_lasso(em_eqdf, markers, panel_name='mixpanel', GRID_SIZE=GRID_SIZE, v = 5, r =3), format='qs'),
-  lasso_res_oldpanel = target(iter_fit_best_lasso(em_eqdf, markers, panel_name='oldpanel', GRID_SIZE=GRID_SIZE, v = 5, r =3), format='qs'),
-  lasso_res_newpanel = target(iter_fit_best_lasso(em_eqdf, markers, panel_name='newpanel', GRID_SIZE=GRID_SIZE, v = 5, r =3), format='qs'),
+  lasso_res_mixpanel = target(iter_fit_best_lasso(em_eqdf, markers, panel_name='mixpanel', grid_size=30, v = 10, r =1), format='qs'),
+  lasso_res_oldpanel = target(iter_fit_best_lasso(em_eqdf, markers, panel_name='oldpanel', grid_size=30, v = 10, r =1), format='qs'),
+  lasso_res_newpanel = target(iter_fit_best_lasso(em_eqdf, markers, panel_name='newpanel', grid_size=30, v = 10, r =1), format='qs'),
   
   lasso_panels = list(
     mix=lasso_res_mixpanel,

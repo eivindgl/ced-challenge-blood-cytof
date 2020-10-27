@@ -12,10 +12,12 @@ read_fcs <- function(fcs_path, markers, cofactor = 5) {
   # metal_map <- 
   p <- flowCore::parameters(z) 
   name_map <- tibble(flow_name = p$name,
-                     metal_and_protein = p$desc) %>% 
+                     metal_and_protein = toupper(p$desc)) %>% 
     left_join(markers, by = 'metal_and_protein') %>% 
     filter(!is.na(protein))
   
+  are_equal(nrow(distinct(name_map, protein)), 
+            nrow(distinct(markers,protein)))
   df <- asinh(exprs(z)[, name_map$flow_name, drop = F] / cofactor) %>% 
     as_tibble() %>% 
     set_names(name_map$protein)

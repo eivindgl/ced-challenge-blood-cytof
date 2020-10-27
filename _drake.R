@@ -10,6 +10,8 @@ lapply(list.files("./R", full.names = TRUE), source)
 ## culprits of this seem to be interactive graphics e.g. plotly and mapdeck.
 drake_config(bind_plans(the_plan,
                         em_plan,
-                        plan_elastic_eval,
-                        plan_lasso),
+                        # plan_elastic_eval,
+                        plan_lasso,
+                        plan_iter_select_glm
+                        ),
              lock_envir = FALSE)
