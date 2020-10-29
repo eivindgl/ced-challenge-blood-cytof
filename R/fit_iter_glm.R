@@ -149,6 +149,8 @@ save_glm_sub_coeffs <- function(glm_res_sub_mixpanel, glm_res_sub_newpanel, glm_
     write_xlsx('out/oldpanel_top_N_predictors_sub_markers.xlsx') 
   extract_coeffs(glm_res_sub_newpanel) %>% 
     write_xlsx('out/newpanel_top_N_predictors_sub_markers.xlsx') 
+  glm_sub_scores %>% 
+    write_xlsx('out/glm_scores.xlsx') 
   
   p <- roc_plot(glm_sub_scores)
   ggsave('out/roc_auc_sub_markers.png', plot = p)
