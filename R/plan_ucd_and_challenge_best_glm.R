@@ -61,9 +61,9 @@ plan_ucd_and_challenge_best_glm <-
              model_name = fct_reorder(model_name, n, min)),
 
     # opt_skip = c('cd62l', 'int_b7', 'cd45ra'),
-    ucd_chal_glm_res_sub_mixpanel = target(iter_fit_best_glm(ucd_chal_df, markers, panel_name='mixpanel', v = 10, r =1, opt_skip = opt_skip), format='qs'),
-    ucd_chal_glm_res_sub_oldpanel = target(iter_fit_best_glm(ucd_chal_df, markers, panel_name='oldpanel', v = 10, r =1, opt_skip = opt_skip), format='qs'),
-    ucd_chal_glm_res_sub_newpanel = target(iter_fit_best_glm(ucd_chal_df, markers, panel_name='newpanel', v = 10, r =1, opt_skip = opt_skip), format='qs'),
+    ucd_chal_glm_res_sub_mixpanel = target(iter_fit_best_glm(ucd_chal_df, markers, panel_name='mixpanel', v = 10, r =3, opt_skip = opt_skip), format='qs'),
+    ucd_chal_glm_res_sub_oldpanel = target(iter_fit_best_glm(ucd_chal_df, markers, panel_name='oldpanel', v = 10, r =3, opt_skip = opt_skip), format='qs'),
+    ucd_chal_glm_res_sub_newpanel = target(iter_fit_best_glm(ucd_chal_df, markers, panel_name='newpanel', v = 10, r =3, opt_skip = opt_skip), format='qs'),
     # 
     ucd_chal_glm_sub_scores = bind_rows(
       new = ucd_chal_glm_res_sub_newpanel %>%
@@ -77,5 +77,17 @@ plan_ucd_and_challenge_best_glm <-
              model_name = fct_reorder(model_name, n, min)),
   )
 # 
-
+ucd_save_glm_sub_coeffs <- function(ucd_chal_glm_res_sub_mixpanel, ucd_chal_glm_res_sub_newpanel, 
+                                ucd_chal_glm_res_sub_oldpanel, ucd_chal_glm_sub_scores) {
+  dir_create('out')
+  extract_coeffs(glm_res_sub_mixpanel) %>% 
+    write_xlsx('out/ucd_and_chal_mixpanel_top_N_predictors_sub_markers.xlsx') 
+  extract_coeffs(glm_res_sub_oldpanel) %>% 
+    write_xlsx('out/ucd_and_chal_oldpanel_top_N_predictors_sub_markers.xlsx') 
+  extract_coeffs(glm_res_sub_newpanel) %>% 
+    write_xlsx('out/ucd_and_chal_newpanel_top_N_predictors_sub_markers.xlsx') 
+  
+  p <- roc_plot(glm_sub_scores)
+  ggsave('out/ucd_and_chal_roc_auc_sub_markers.png', plot = p)
+}
 

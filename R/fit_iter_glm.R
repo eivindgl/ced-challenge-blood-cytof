@@ -86,9 +86,9 @@ plan_iter_select_glm <-
         model_name = fct_reorder(model_name, n, min)),
     
     opt_skip = c('cd62l', 'int_b7', 'cd45ra'),
-    glm_res_sub_mixpanel = target(iter_fit_best_glm(em_eqdf, markers, panel_name='mixpanel', v = 10, r =1, opt_skip = opt_skip), format='qs'),
-    glm_res_sub_oldpanel = target(iter_fit_best_glm(em_eqdf, markers, panel_name='oldpanel', v = 10, r =1, opt_skip = opt_skip), format='qs'),
-    glm_res_sub_newpanel = target(iter_fit_best_glm(em_eqdf, markers, panel_name='newpanel', v = 10, r =1, opt_skip = opt_skip), format='qs'),
+    glm_res_sub_mixpanel = target(iter_fit_best_glm(em_eqdf, markers, panel_name='mixpanel', v = 10, r =3, opt_skip = opt_skip), format='qs'),
+    glm_res_sub_oldpanel = target(iter_fit_best_glm(em_eqdf, markers, panel_name='oldpanel', v = 10, r =3, opt_skip = opt_skip), format='qs'),
+    glm_res_sub_newpanel = target(iter_fit_best_glm(em_eqdf, markers, panel_name='newpanel', v = 10, r =3, opt_skip = opt_skip), format='qs'),
     
     glm_sub_scores = bind_rows(
       new = glm_res_sub_newpanel %>%
