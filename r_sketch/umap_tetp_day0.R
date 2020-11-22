@@ -21,7 +21,7 @@ day0_tetp_tbl <- read_day0_em_fcs(markers)
 dimred_sample <- bind_rows(
   pre_tbl %>% 
     group_by(donor) %>% 
-    slice_sample(n = 3000) %>% 
+    slice_sample(n = 300) %>% 
     mutate(sample_type = 'pre'),
   em_eqdf %>% 
     mutate(sample_time = 'day_6'),
@@ -41,3 +41,23 @@ udf %>%
   ggplot(aes(umap_1, umap_2, color = sample_type)) +
   geom_point(alpha=0.4) + 
   facet_wrap(sample_time ~ sample_type)
+
+
+# umap_rec <- 
+bl_d6_umap <- bind_rows(mutate(em_eqdf, sample_time = 'day_6'),
+                        bl_raw %>%
+                          group_by(donor, sample_type) %>%
+                          slice_sample(n=300) %>%
+                          ungroup()) %>% 
+  recipe(sample_type ~ .) %>% 
+  update_role(donor, sample_time, sample_type, row_id, new_role = 'ID') %>% 
+  step_umap(all_predictors()) %>% 
+  prep()
+
+p <- bl_d6_umap %>% 
+  juice() %>% 
+  ggplot(aes(umap_1, umap_2, color = sample_type)) +
+  geom_point(alpha=0.4) + 
+  facet_wrap(sample_type ~ sample_time)
+
+p
