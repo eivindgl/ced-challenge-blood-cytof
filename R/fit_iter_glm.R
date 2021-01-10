@@ -121,7 +121,7 @@ extract_coeffs <- function(glm_res) {
  map(glm_res, ~ .x$final %>% tidy())
 }
 
-save_glm_coeffs <- function(glm_res_mixpanel, glm_res_newpanel, glm_res_oldpanel) {
+save_glm_coeffs <- function(glm_res_mixpanel, glm_res_newpanel, glm_res_oldpanel, glm_scores) {
   dir_create('out')
   extract_coeffs(glm_res_mixpanel) %>% 
     write_xlsx('out/mixpanel_top_N_predictors_all_markers.xlsx') 
@@ -138,7 +138,7 @@ save_glm_coeffs <- function(glm_res_mixpanel, glm_res_newpanel, glm_res_oldpanel
   dev.off()
   
   p <- roc_plot(glm_scores)
-  ggsave('out/roc_auc_all_markers.png', plot = p)
+  ggsave('out/roc_auc_all_markers.pdf', plot = p)
 }
 
 save_glm_sub_coeffs <- function(glm_res_sub_mixpanel, glm_res_sub_newpanel, glm_res_sub_oldpanel, glm_sub_scores) {
@@ -154,4 +154,5 @@ save_glm_sub_coeffs <- function(glm_res_sub_mixpanel, glm_res_sub_newpanel, glm_
   
   p <- roc_plot(glm_sub_scores)
   ggsave('out/roc_auc_sub_markers.png', plot = p)
+  ggsave('out/roc_auc_sub_markers.pdf', plot = p)
 }
